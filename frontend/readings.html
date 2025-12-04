@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lecturas en Tiempo Real</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      padding: 20px;
+    }
+    h1 { text-align: center; }
+    .chart-container {
+      width: 90%;
+      max-width: 900px;
+      margin: 20px auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📡 Lecturas del ESP32 en Tiempo Real</h1>
+
+  <div class="chart-container">
+    <h2>🌡 Temperatura (°C)</h2>
+    <canvas id="tempChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h2>💧 Humedad (%)</h2>
+    <canvas id="humChart"></canvas>
+  </div>
+
+  <script>
+    const tempCtx = document.getElementById("tempChart").getContext("2d");
+    const humCtx = document.getElementById("humChart").getContext("2d");
+
+    // --- CHARTS ---
+    const tempChart = new Chart(tempCtx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Temperatura",
+          data: [],
+          borderWidth: 2,
+          fill: false,
+          tension: 0.2
+        }]
+      }
+    });
+
+    const humChart = new Chart(humCtx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Humedad",
+          data: [],
+          borderWidth: 2,
+          fill: false,
+          tension: 0.2
+        }]
+      }
+    });
+
+    // --- FUNCIÓN PARA CARGAR DATOS DE LA API ---
+    async function loadData() {
+      try {
+        const res = await fetch("http://localhost:3000/api/readings");
+        if (!res.ok) throw new Error("Error HTTP");
+
+        const data = await res.json();
+
+        // Tomar los últimos 50 datos para no sobrecargar
+        const recent = data.slice(-50);
+
+        const labels = recent.map(r =>
+          new Date(r.timestamp).toLocaleTimeString()
+        );
+
+        const temps = recent.map(r => r.temperature);
+        const hums  = recent.map(r => r.humidity);
+
+        // --- Actualizar gráficos ---
+        tempChart.data.labels = labels;
+        tempChart.data.datasets[0].data = temps;
+        tempChart.update();
+
+        humChart.data.labels = labels;
+        humChart.data.datasets[0].data = hums;
+        humChart.update();
+
+      } catch (err) {
+        console.error("❌ Error cargando datos:", err);
+      }
+    }
+
+    // Carga inicial
+    loadData();
+
+    // Actualiza cada 5 segundos
+    setInterval(loadData, 5000);
+  </script>
+
+</body>
+</html>
